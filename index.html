@@ -3164,10 +3164,15 @@
             // 从Supabase加载所有数据
             async loadFromCloud() {
                 try {
-                    const [eventsRes, commentsRes, likesRes] = await Promise.all([
-                        supabase.from('events').select('*').order('created_at', { ascending: true }),
-                        supabase.from('comments').select('*').order('created_at', { ascending: true }),
-                        supabase.from('likes').select('*')
+                    // 设置8秒超时，避免网络慢时页面卡死
+                    const timeout = ms => new Promise((_, reject) => setTimeout(() => reject(new Error('加载超时')), ms));
+                    const [eventsRes, commentsRes, likesRes] = await Promise.race([
+                        Promise.all([
+                            supabase.from('events').select('*').order('created_at', { ascending: true }),
+                            supabase.from('comments').select('*').order('created_at', { ascending: true }),
+                            supabase.from('likes').select('*')
+                        ]),
+                        timeout(8000)
                     ]);
                     this.data.events = (eventsRes.data || []).map(e => ({
                         ...e,
@@ -3179,9 +3184,10 @@
                         time: c.created_at,
                         author: c.author || '匿名',
                         authorAvatar: '',
-                        replyTo: c.parent_id ? null : null,
+                        replyTo: c.parent_id || null,
                         likes: 0,
-                        id: c.id
+                        id: c.id,
+                        eventId: c.event_id
                     }));
                     // 转换likes格式
                     const myUserKey = this.data.user?.username || localStorage.getItem('campus_user_key') || 'anon_' + Date.now();
@@ -3204,8 +3210,17 @@
                     this._loaded = true;
                     console.log('Supabase数据加载成功', this.data.events.length, '个事件');
                 } catch(e) {
-                    console.error('Supabase数据加载失败', e);
+                    console.error('Supabase数据加载失败，使用本地默认数据', e);
                     this.data.events = [...CONFIG.defaultEvents];
+                    // 显示提示
+                    setTimeout(() => {
+                        const toast = document.getElementById('toast');
+                        if (toast) {
+                            toast.textContent = '云端数据加载失败，显示本地数据';
+                            toast.classList.add('show');
+                            setTimeout(() => toast.classList.remove('show'), 3000);
+                        }
+                    }, 500);
                 }
             }
 
@@ -3288,7 +3303,7 @@
                         event_title: eventTitle,
                         content: content,
                         author: authorName,
-                        parent_id: replyTo ? null : null
+                        parent_id: replyTo || null
                     });
                     if (error) console.error('写入评论失败', error);
                 } catch(e) { console.error('写入评论异常', e); }
@@ -3632,7 +3647,7 @@ function switchBackground(year) {
                 var d = new Date(c.time);
                 timeStr = (d.getMonth()+1) + '/' + d.getDate();
             }
-            var safeTime = c.time.replace(/'/g, "\\'");
+            var safeTime = (c.time || '').replace(/'/g, "\\'");
             // 回复指向
             var replyToHtml = '';
             if (c.replyTo) {

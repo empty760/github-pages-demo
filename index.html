@@ -3080,13 +3080,7 @@
     <!-- Toast提示 -->
     <div class="toast" id="toast"></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // ============ Supabase 配置 ============
-        const SUPABASE_URL = 'https://ceogipqzmqeubgwrpfqe.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNlb2dpcHF6bXFldWJnd3JwZnFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0Mzc3NjAsImV4cCI6MjA5MzAxMzc2MH0.wGuqcMematEMedP3G-i-7LPeeoK4TK6hkt8eLpqvT9s';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
         // ============ 配置 ============
         const CONFIG = {
             startYear: 2000,
@@ -3149,121 +3143,48 @@
             ]
         };
 
-        // ============ 数据管理（Supabase版） ============
+        // ============ 数据管理 ============
         class DataManager {
             constructor() {
-                this.data = { user: null, events: [], comments: [], likes: [], commentLikes: [], currentYear: CONFIG.startYear };
-                this._loaded = false;
-                // 从localStorage恢复本地用户状态
-                try {
-                    const localUser = JSON.parse(localStorage.getItem('campus_local_user') || 'null');
-                    if (localUser && localUser.isLoggedIn) this.data.user = localUser;
-                } catch(e) {}
+                this.storageKey = 'campus_social_data';
+                this.data = this.load();
             }
 
-            // 从Supabase加载所有数据
-            async loadFromCloud() {
-                try {
-                    // 设置8秒超时，避免网络慢时页面卡死
-                    const timeout = ms => new Promise((_, reject) => setTimeout(() => reject(new Error('加载超时')), ms));
-                    const [eventsRes, commentsRes, likesRes] = await Promise.race([
-                        Promise.all([
-                            supabase.from('events').select('*').order('created_at', { ascending: true }),
-                            supabase.from('comments').select('*').order('created_at', { ascending: true }),
-                            supabase.from('likes').select('*')
-                        ]),
-                        timeout(8000)
-                    ]);
-                    this.data.events = (eventsRes.data || []).map(e => ({
-                        ...e,
-                        media: typeof e.media === 'string' ? JSON.parse(e.media) : (e.media || [])
-                    }));
-                    this.data.comments = (commentsRes.data || []).map(c => ({
-                        eventTitle: c.event_title,
-                        content: c.content,
-                        time: c.created_at,
-                        author: c.author || '匿名',
-                        authorAvatar: '',
-                        replyTo: c.parent_id || null,
-                        likes: 0,
-                        id: c.id,
-                        eventId: c.event_id
-                    }));
-                    // 转换likes格式
-                    const myUserKey = this.data.user?.username || localStorage.getItem('campus_user_key') || 'anon_' + Date.now();
-                    localStorage.setItem('campus_user_key', myUserKey);
-                    this.data.likes = (likesRes.data || []).filter(l => l.target_type === 'event' && l.user_key === myUserKey).map(l => ({
-                        eventTitle: '',  // 需要关联查询补充
-                        time: l.created_at,
-                        targetId: l.target_id
-                    }));
-                    this.data.commentLikes = (likesRes.data || []).filter(l => l.target_type === 'comment' && l.user_key === myUserKey).map(l => ({
-                        commentTime: '',
-                        eventTitle: '',
-                        time: l.created_at,
-                        targetId: l.target_id
-                    }));
-                    // 补充like的eventTitle
-                    const eventMap = {};
-                    this.data.events.forEach(e => { eventMap[e.id] = e.title; });
-                    this.data.likes.forEach(l => { if (l.targetId && eventMap[l.targetId]) l.eventTitle = eventMap[l.targetId]; });
-                    this._loaded = true;
-                    console.log('Supabase数据加载成功', this.data.events.length, '个事件');
-                } catch(e) {
-                    console.error('Supabase数据加载失败，使用本地默认数据', e);
-                    this.data.events = [...CONFIG.defaultEvents];
-                    // 显示提示
-                    setTimeout(() => {
-                        const toast = document.getElementById('toast');
-                        if (toast) {
-                            toast.textContent = '云端数据加载失败，显示本地数据';
-                            toast.classList.add('show');
-                            setTimeout(() => toast.classList.remove('show'), 3000);
-                        }
-                    }, 500);
+            load() {
+                const saved = localStorage.getItem(this.storageKey);
+                if (saved) {
+                    try {
+                        return JSON.parse(saved);
+                    } catch (e) {
+                        console.error('数据加载失败', e);
+                    }
                 }
+                return this.getDefaultData();
             }
 
-            // 保存本地用户状态
-            _saveLocalUser() {
-                if (this.data.user) {
-                    localStorage.setItem('campus_local_user', JSON.stringify(this.data.user));
-                }
+            getDefaultData() {
+                return {
+                    user: null,
+                    events: [...CONFIG.defaultEvents],
+                    currentYear: CONFIG.startYear
+                };
             }
 
             save(data) {
                 this.data = data;
-                this._saveLocalUser();
+                localStorage.setItem(this.storageKey, JSON.stringify(data));
             }
 
-            async addEvent(event) {
-                const userKey = this.data.user?.username || '访客';
-                const authorName = this.data.user?.name || this.data.user?.username || '访客';
-                const newId = Date.now();
+            addEvent(event) {
                 const newEvent = {
-                    id: newId,
+                    id: Date.now(),
                     ...event,
-                    author: authorName,
-                    media: event.media || []
+                    author: this.data.user?.enrollmentYear 
+                        ? `${this.data.user.enrollmentYear}级学生` 
+                        : '访客'
                 };
-                // 写入Supabase
-                try {
-                    const { error } = await supabase.from('events').insert({
-                        id: newId,
-                        title: event.title,
-                        description: event.description || '',
-                        year: event.year,
-                        month: event.month || 1,
-                        day: event.day || 1,
-                        location: event.location || '',
-                        category: event.category || '其他',
-                        author: authorName,
-                        media: JSON.stringify(event.media || [])
-                    });
-                    if (error) console.error('写入事件失败', error);
-                } catch(e) { console.error('写入事件异常', e); }
                 this.data.events.push(newEvent);
-                this._saveLocalUser();
+                this.save(this.data);
                 return newEvent;
             }
 
@@ -3282,146 +3203,11 @@
             searchEvents(query) {
                 if (!query) return [];
                 const q = query.toLowerCase();
-                return this.data.events.filter(e =>
+                return this.data.events.filter(e => 
                     e.title.toLowerCase().includes(q) ||
                     (e.description && e.description.toLowerCase().includes(q)) ||
                     (e.location && e.location.toLowerCase().includes(q))
                 );
-            }
-
-            // 添加评论到Supabase
-            async addCommentToCloud(eventTitle, content, replyTo) {
-                const authorName = this.data.user?.name || this.data.user?.username || '匿名';
-                const commentId = Date.now();
-                // 找到对应事件的id
-                const event = this.data.events.find(e => e.title === eventTitle);
-                const eventId = event ? event.id : null;
-                try {
-                    const { error } = await supabase.from('comments').insert({
-                        id: commentId,
-                        event_id: eventId,
-                        event_title: eventTitle,
-                        content: content,
-                        author: authorName,
-                        parent_id: replyTo || null
-                    });
-                    if (error) console.error('写入评论失败', error);
-                } catch(e) { console.error('写入评论异常', e); }
-                const newComment = {
-                    eventTitle: eventTitle,
-                    content: content,
-                    time: new Date().toISOString(),
-                    author: authorName,
-                    authorAvatar: (this.data.user && this.data.user.avatar) ? this.data.user.avatar : '',
-                    replyTo: replyTo || null,
-                    likes: 0,
-                    id: commentId
-                };
-                this.data.comments.push(newComment);
-                return newComment;
-            }
-
-            // 事件点赞（Supabase）
-            async toggleLikeEventCloud(eventTitle) {
-                const myUserKey = this.data.user?.username || localStorage.getItem('campus_user_key') || 'anon';
-                const event = this.data.events.find(e => e.title === eventTitle);
-                if (!event) return null;
-                const eventId = event.id;
-                // 检查是否已点赞
-                const { data: existing } = await supabase.from('likes')
-                    .select('*')
-                    .eq('target_type', 'event')
-                    .eq('target_id', eventId)
-                    .eq('user_key', myUserKey);
-                if (existing && existing.length > 0) {
-                    // 取消点赞
-                    await supabase.from('likes').delete().eq('id', existing[0].id);
-                    this.data.likes = this.data.likes.filter(l => !(l.targetId === eventId));
-                    return false; // unliked
-                } else {
-                    // 添加点赞
-                    await supabase.from('likes').insert({
-                        id: Date.now(),
-                        target_type: 'event',
-                        target_id: eventId,
-                        user_key: myUserKey
-                    });
-                    this.data.likes.push({ eventTitle: eventTitle, time: new Date().toISOString(), targetId: eventId });
-                    return true; // liked
-                }
-            }
-
-            // 评论点赞（Supabase）
-            async toggleCommentLikeCloud(eventTitle, commentId) {
-                const myUserKey = this.data.user?.username || localStorage.getItem('campus_user_key') || 'anon';
-                const { data: existing } = await supabase.from('likes')
-                    .select('*')
-                    .eq('target_type', 'comment')
-                    .eq('target_id', commentId)
-                    .eq('user_key', myUserKey);
-                if (existing && existing.length > 0) {
-                    await supabase.from('likes').delete().eq('id', existing[0].id);
-                    return false;
-                } else {
-                    await supabase.from('likes').insert({
-                        id: Date.now(),
-                        target_type: 'comment',
-                        target_id: commentId,
-                        user_key: myUserKey
-                    });
-                    return true;
-                }
-            }
-
-            // 用户注册（Supabase）
-            async registerUser(userData) {
-                const newId = Date.now();
-                try {
-                    const { data, error } = await supabase.from('users').insert({
-                        id: newId,
-                        name: userData.name,
-                        gender: userData.gender || '',
-                        phone: userData.phone,
-                        grade: userData.grade || '',
-                        username: userData.username,
-                        password: userData.password,
-                        avatar: userData.avatar || ''
-                    }).select();
-                    if (error) {
-                        if (error.message && error.message.includes('duplicate')) {
-                            return { success: false, message: '用户名已存在' };
-                        }
-                        return { success: false, message: error.message };
-                    }
-                    return { success: true, user: data[0] };
-                } catch(e) {
-                    return { success: false, message: e.message };
-                }
-            }
-
-            // 用户登录（Supabase）
-            async loginUser(username, password) {
-                try {
-                    const { data, error } = await supabase.from('users')
-                        .select('*')
-                        .eq('username', username)
-                        .eq('password', password);
-                    if (error) return { success: false, message: error.message };
-                    if (!data || data.length === 0) {
-                        // 也尝试手机号登录
-                        const { data: data2 } = await supabase.from('users')
-                            .select('*')
-                            .eq('phone', username)
-                            .eq('password', password);
-                        if (!data2 || data2.length === 0) {
-                            return { success: false, message: '用户名/手机号或密码错误' };
-                        }
-                        return { success: true, user: data2[0] };
-                    }
-                    return { success: true, user: data[0] };
-                } catch(e) {
-                    return { success: false, message: e.message };
-                }
             }
 
             exportData() {
@@ -3442,7 +3228,7 @@
                     try {
                         const imported = JSON.parse(e.target.result);
                         if (imported.events) {
-                            this.data = { ...this.data, ...imported };
+                            this.save(imported);
                             showToast('数据导入成功', 'success');
                             renderTimeline();
                             renderMonthDetail();
@@ -3495,16 +3281,6 @@ function switchBackground(year) {
 }
 
         const dataManager = new DataManager();
-
-        // ============ 异步初始化（从Supabase加载数据） ============
-        async function initApp() {
-            await dataManager.loadFromCloud();
-            renderTimeline();
-            renderMonthDetail();
-            updateMonthBar(CONFIG.startYear);
-            updateUserPanel();
-            console.log('应用初始化完成');
-        }
 
         // ============ 月份展示栏逻辑 ============
         let monthBarCurrentYear = -1;
@@ -3572,8 +3348,8 @@ function switchBackground(year) {
             var ai = (event.author || '\u533F\u540D')[0];
             var authorAvatar = event.authorAvatar || '';
             var avatarHTML = authorAvatar ? '<img src="' + authorAvatar + '" style="width:100%;height:100%;object-fit:cover;border-radius:6px;">' : ai;
-            var liked = (dataManager.data.likes || []).some(function(l) { return l.eventTitle === event.title || l.targetId === event.id; });
-            var lc = (dataManager.data.likes || []).filter(function(l) { return l.eventTitle === event.title || l.targetId === event.id; }).length;
+            var liked = (dataManager.data.likes || []).some(function(l) { return l.eventTitle === event.title; });
+            var lc = (dataManager.data.likes || []).filter(function(l) { return l.eventTitle === event.title; }).length;
             var allComments = (dataManager.data.comments || []).filter(function(c) { return c.eventTitle === event.title; });
             var cc = allComments.length;
 
@@ -3640,14 +3416,14 @@ function switchBackground(year) {
             var ca = (c.author || '\u533F\u540D')[0];
             var commentAvatar = c.authorAvatar || '';
             var commentAvatarHTML = commentAvatar ? '<img src="' + commentAvatar + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">' : ca;
-            var cLiked = (dataManager.data.commentLikes || []).some(function(cl) { return cl.targetId === c.id || (cl.commentTime === c.time && cl.eventTitle === c.eventTitle); });
+            var cLiked = (dataManager.data.commentLikes || []).some(function(cl) { return cl.commentTime === c.time && cl.eventTitle === c.eventTitle; });
             var cLikes = (c.likes || 0);
             var timeStr = '';
             if (c.time) {
                 var d = new Date(c.time);
                 timeStr = (d.getMonth()+1) + '/' + d.getDate();
             }
-            var safeTime = (c.time || '').replace(/'/g, "\\'");
+            var safeTime = c.time.replace(/'/g, "\\'");
             // 回复指向
             var replyToHtml = '';
             if (c.replyTo) {
@@ -3691,11 +3467,23 @@ function switchBackground(year) {
             inputArea.querySelector('input').focus();
         }
 
-        async function submitReply(input, replyTo) {
+        function submitReply(input, replyTo) {
             var val = input.value.trim();
             if (!val) return;
             var eventTitle = getEventTitleFromCard(input);
-            await dataManager.addCommentToCloud(eventTitle, val, replyTo);
+            var comments = dataManager.data.comments || [];
+            var currentUser = dataManager.data.user;
+            comments.push({
+                eventTitle: eventTitle,
+                content: val,
+                time: new Date().toISOString(),
+                author: (currentUser && currentUser.username) ? currentUser.username : '\u533F\u540D',
+                authorAvatar: (currentUser && currentUser.avatar) ? currentUser.avatar : '',
+                replyTo: replyTo,
+                likes: 0
+            });
+            dataManager.data.comments = comments;
+            dataManager.save(dataManager.data);
             showToast('\u56DE\u590D\u6210\u529F', 'success');
             if (monthBarActiveMonth) {
                 openMonthPosts(monthBarCurrentYear, monthBarActiveMonth);
@@ -3739,32 +3527,49 @@ function switchBackground(year) {
             if (input) input.focus();
         }
 
-        async function submitComment(input) {
+        function submitComment(input) {
             var val = input.value.trim();
             if (!val) return;
             var eventTitle = getEventTitleFromCard(input);
-            await dataManager.addCommentToCloud(eventTitle, val, null);
+            var comments = dataManager.data.comments || [];
+            var currentUser = dataManager.data.user;
+            comments.push({
+                eventTitle: eventTitle,
+                content: val,
+                time: new Date().toISOString(),
+                author: (currentUser && currentUser.username) ? currentUser.username : '\u533F\u540D',
+                authorAvatar: (currentUser && currentUser.avatar) ? currentUser.avatar : '',
+                likes: 0
+            });
+            dataManager.data.comments = comments;
+            dataManager.save(dataManager.data);
             showToast('\u8BC4\u8BBA\u6210\u529F', 'success');
             if (monthBarActiveMonth) {
                 openMonthPosts(monthBarCurrentYear, monthBarActiveMonth);
             }
         }
 
-        async function toggleCommentLike(btn, commentTime) {
+        function toggleCommentLike(btn, commentTime) {
             var eventTitle = getEventTitleFromCard(btn);
+            var commentLikes = dataManager.data.commentLikes || [];
             var comments = dataManager.data.comments || [];
+            var idx = commentLikes.findIndex(function(cl) { return cl.commentTime === commentTime && cl.eventTitle === eventTitle; });
+            // 找到对应评论
             var cIdx = comments.findIndex(function(c) { return c.time === commentTime && c.eventTitle === eventTitle; });
             if (cIdx < 0) return;
-            var commentId = comments[cIdx].id || Date.now();
-            var liked = await dataManager.toggleCommentLikeCloud(eventTitle, commentId);
-            if (liked) {
-                if (!comments[cIdx].likes) comments[cIdx].likes = 0;
+            if (!comments[cIdx].likes) comments[cIdx].likes = 0;
+            if (idx >= 0) {
+                commentLikes.splice(idx, 1);
+                comments[cIdx].likes = Math.max(0, comments[cIdx].likes - 1);
+                btn.classList.remove('liked');
+            } else {
+                commentLikes.push({ eventTitle: eventTitle, commentTime: commentTime, time: new Date().toISOString() });
                 comments[cIdx].likes += 1;
                 btn.classList.add('liked');
-            } else {
-                comments[cIdx].likes = Math.max(0, (comments[cIdx].likes || 1) - 1);
-                btn.classList.remove('liked');
             }
+            dataManager.data.commentLikes = commentLikes;
+            dataManager.data.comments = comments;
+            dataManager.save(dataManager.data);
             // 刷新当前视图
             if (monthBarActiveMonth) {
                 openMonthPosts(monthBarCurrentYear, monthBarActiveMonth);
@@ -3781,14 +3586,19 @@ function switchBackground(year) {
             });
         }
 
-        async function toggleLikeEvent(btn) {
+        function toggleLikeEvent(btn) {
             var eventTitle = getEventTitleFromCard(btn);
-            var liked = await dataManager.toggleLikeEventCloud(eventTitle);
-            if (liked) {
-                btn.classList.add('liked');
-            } else {
+            var likes = dataManager.data.likes || [];
+            var idx = likes.findIndex(function(l) { return l.eventTitle === eventTitle; });
+            if (idx >= 0) {
+                likes.splice(idx, 1);
                 btn.classList.remove('liked');
+            } else {
+                likes.push({ eventTitle: eventTitle, time: new Date().toISOString() });
+                btn.classList.add('liked');
             }
+            dataManager.data.likes = likes;
+            dataManager.save(dataManager.data);
             // refresh current view
             if (monthBarActiveMonth) {
                 openMonthPosts(monthBarCurrentYear, monthBarActiveMonth);
@@ -3893,8 +3703,6 @@ function switchBackground(year) {
         function renderUserComments() {
             const content = document.getElementById('userPanelContent');
             const comments = dataManager.data.comments || [];
-            const eventMap = {};
-            dataManager.data.events.forEach(e => { eventMap[e.title] = e; });
 
             if (comments.length === 0) {
                 content.innerHTML = `
@@ -3906,25 +3714,20 @@ function switchBackground(year) {
                 return;
             }
 
-            content.innerHTML = comments.map(comment => {
-                const evt = eventMap[comment.eventTitle] || {};
-                return `
-                <div class="user-panel-item" onclick="jumpToEvent(${evt.year || 2025}, ${evt.month || 1})">
+            content.innerHTML = comments.map(comment => `
+                <div class="user-panel-item" onclick="jumpToEvent(${comment.year}, ${comment.month})">
                     <div class="user-panel-item-icon"></div>
                     <div class="user-panel-item-content">
                         <div class="user-panel-item-title">${comment.eventTitle || '评论'}</div>
-                        <div class="user-panel-item-meta">${evt.year || ''}年${evt.month ? evt.month + '月' : ''} · ${comment.time || '刚刚'}</div>
+                        <div class="user-panel-item-meta">${comment.year}年${comment.month}月 · ${comment.time || '刚刚'}</div>
                     </div>
                 </div>
-                `;
-            }).join('');
+            `).join('');
         }
 
         function renderUserLikes() {
             const content = document.getElementById('userPanelContent');
             const likes = dataManager.data.likes || [];
-            const eventMap = {};
-            dataManager.data.events.forEach(e => { eventMap[e.id] = e; eventMap[e.title] = e; });
 
             if (likes.length === 0) {
                 content.innerHTML = `
@@ -3936,23 +3739,22 @@ function switchBackground(year) {
                 return;
             }
 
-            content.innerHTML = likes.map(like => {
-                const evt = eventMap[like.eventTitle] || eventMap[like.targetId] || {};
-                return `
-                <div class="user-panel-item" onclick="jumpToEvent(${evt.year || 2025}, ${evt.month || 1})">
+            content.innerHTML = likes.map(like => `
+                <div class="user-panel-item" onclick="jumpToEvent(${like.year}, ${like.month})">
                     <div class="user-panel-item-icon">❤️</div>
                     <div class="user-panel-item-content">
-                        <div class="user-panel-item-title">${like.eventTitle || evt.title || '点赞'}</div>
-                        <div class="user-panel-item-meta">${evt.year || ''}年${evt.month ? evt.month + '月' : ''} · ${like.time || '刚刚'}</div>
+                        <div class="user-panel-item-title">${like.eventTitle || '点赞'}</div>
+                        <div class="user-panel-item-meta">${like.year}年${like.month}月 · ${like.time || '刚刚'}</div>
                     </div>
                 </div>
-                `;
-            }).join('');
+            `).join('');
         }
 
         function logout() {
-            dataManager.data.user = { ...dataManager.data.user, isLoggedIn: false };
-            dataManager._saveLocalUser();
+            dataManager.save({
+                ...dataManager.data,
+                user: { ...dataManager.data.user, isLoggedIn: false }
+            });
             toggleUserPanel();
             showToast('已退出登录', 'success');
         }
@@ -4009,7 +3811,7 @@ function switchBackground(year) {
             }
         }
 
-        async function handleLogin() {
+        function handleLogin() {
             const username = document.getElementById('loginUsername').value.trim();
             const password = document.getElementById('loginPassword').value;
 
@@ -4018,23 +3820,31 @@ function switchBackground(year) {
                 return;
             }
 
-            const result = await dataManager.loginUser(username, password);
-            if (result.success) {
-                dataManager.data.user = {
-                    ...result.user,
-                    isLoggedIn: true
-                };
-                dataManager._saveLocalUser();
-                showToast('登录成功！欢迎 ' + result.user.name, 'success');
+            // 简单的本地验证（支持用户名或手机号登录）
+            const users = JSON.parse(localStorage.getItem('campus_users') || '[]');
+            const user = users.find(u => 
+                (u.username === username || u.phone === username) && u.password === password
+            );
+
+            if (user) {
+                dataManager.save({
+                    ...dataManager.data,
+                    user: { 
+                        ...dataManager.data.user,
+                        ...user,
+                        isLoggedIn: true
+                    }
+                });
+                showToast('登录成功！欢迎 ' + user.name, 'success');
                 updateUserPanel();
                 document.getElementById('loginUsername').value = '';
                 document.getElementById('loginPassword').value = '';
             } else {
-                showToast(result.message || '用户名/手机号或密码错误', 'error');
+                showToast('用户名/手机号或密码错误', 'error');
             }
         }
 
-        async function handleRegister() {
+        function handleRegister() {
             const name = document.getElementById('registerName').value.trim();
             const gender = document.getElementById('registerGender').value;
             const phone = document.getElementById('registerPhone').value.trim();
@@ -4074,30 +3884,48 @@ function switchBackground(year) {
                 return;
             }
 
-            // 注册到Supabase
-            const result = await dataManager.registerUser({
+            // 保存用户
+            const users = JSON.parse(localStorage.getItem('campus_users') || '[]');
+            
+            // 检查用户名是否已存在
+            if (users.find(u => u.username === username)) {
+                showToast('用户名已存在', 'error');
+                return;
+            }
+            // 检查手机号是否已注册
+            if (users.find(u => u.phone === phone)) {
+                showToast('该手机号已注册', 'error');
+                return;
+            }
+
+            const newUser = {
+                id: Date.now(),
                 name,
                 gender,
                 phone,
                 grade,
                 username,
                 password,
-                avatar: selectedAvatar || ''
+                avatar: selectedAvatar || '',
+                createdAt: new Date().toISOString()
+            };
+            
+            users.push(newUser);
+            localStorage.setItem('campus_users', JSON.stringify(users));
+
+            // 自动登录
+            dataManager.save({
+                ...dataManager.data,
+                user: { 
+                    ...newUser,
+                    isLoggedIn: true
+                }
             });
 
-            if (result.success) {
-                dataManager.data.user = {
-                    ...result.user,
-                    isLoggedIn: true
-                };
-                dataManager._saveLocalUser();
-                showToast('注册成功！欢迎加入 ' + name, 'success');
-                selectedAvatar = '';
-                updateUserPanel();
-                closeWelcomeModal();
-            } else {
-                showToast(result.message || '注册失败', 'error');
-            }
+            showToast('注册成功！欢迎加入 ' + name, 'success');
+            selectedAvatar = '';
+            updateUserPanel();
+            closeWelcomeModal();
             
             // 清空表单
             document.getElementById('registerName').value = '';
@@ -5210,7 +5038,7 @@ function switchBackground(year) {
             );
         }
 
-        async function submitEvent() {
+        function submitEvent() {
             const year = document.getElementById('publishYear').value;
             const month = document.getElementById('publishMonth').value;
             const title = document.getElementById('publishTitle').value.trim();
@@ -5232,6 +5060,7 @@ function switchBackground(year) {
                 return;
             }
 
+            const currentUser = dataManager.data.user;
             const event = {
                 year: parseInt(year),
                 month: parseInt(month),
@@ -5239,15 +5068,14 @@ function switchBackground(year) {
                 description,
                 media: uploadedMedia,
                 location,
-                category: '其他',
-                author: '',
-                authorAvatar: ''
+                author: (currentUser && currentUser.name) ? currentUser.name : '\u533F\u540D\u7528\u6237',
+                authorAvatar: (currentUser && currentUser.avatar) ? currentUser.avatar : ''
             };
 
-            await dataManager.addEvent(event);
+            dataManager.addEvent(event);
             closePublishModal();
             renderTimeline();
-
+            
             if (selectedYear === parseInt(year)) {
                 renderMonthEvents(year, parseInt(month));
             }
@@ -5376,10 +5204,9 @@ function switchBackground(year) {
         }
 
         // ============ 初始化 ============
-        document.addEventListener('DOMContentLoaded', async () => {
+        document.addEventListener('DOMContentLoaded', () => {
             initWelcomeModal();
-            // 先从Supabase加载数据，再渲染
-            await initApp();
+            renderTimeline();
             initTimelineScroll();
             initContentDrag();
             initUpload();

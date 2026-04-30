@@ -2634,92 +2634,339 @@
             }
         }
 
-        /* 响应式 */
+        /* ============ 移动端适配优化 ============ */
         @media (max-width: 768px) {
+            /* 顶部导航栏 - 紧凑布局 */
             .top-nav {
-                padding: 0 12px;
-                gap: 12px;
+                padding: 0 10px;
+                gap: 8px;
+                height: 52px;
             }
 
             .nav-title {
-                font-size: 16px;
+                font-size: 15px;
+                flex-shrink: 0;
             }
 
             .search-container {
                 order: 3;
                 width: 100%;
                 max-width: none;
-                margin-top: 8px;
+                margin-top: 0;
+                position: absolute;
+                top: 52px;
+                left: 0;
+                right: 0;
+                padding: 6px 10px;
+                background: rgba(9, 9, 11, 0.92);
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+                border-bottom: 1px solid var(--border-subtle);
+                z-index: 2000;
             }
 
-            .nav-buttons {
-                gap: 8px;
-            }
-
-            .nav-btn {
-                padding: 0 12px;
+            .search-input {
+                height: 32px;
                 font-size: 13px;
             }
 
+            .nav-buttons {
+                gap: 6px;
+                flex-shrink: 0;
+            }
+
+            .nav-btn {
+                padding: 0 10px;
+                font-size: 12px;
+                height: 28px;
+                line-height: 28px;
+            }
+
+            .user-avatar {
+                width: 28px;
+                height: 28px;
+                font-size: 12px;
+            }
+
+            /* 月份栏 - 适配搜索栏下移 */
+            .month-bar {
+                top: 88px;
+                height: 38px;
+                padding: 0 8px;
+                gap: 6px;
+            }
+
+            .month-bar-year {
+                font-size: 12px;
+                min-width: 34px;
+            }
+
+            .month-bar-btn {
+                height: 24px;
+                padding: 0 6px;
+                font-size: 11px;
+                min-width: 28px;
+            }
+
+            /* 活动滚动区域 - 缩短高度给时间轴更多空间 */
             .content-scroll-area {
-                top: 108px;
-                height: 40vh;
+                top: 126px;
+                height: 32vh;
             }
 
             .content-card-inner {
-                padding: 24px 20px;
+                padding: 14px 12px;
             }
 
             .content-year {
-                font-size: 28px;
+                font-size: 22px;
             }
 
-            .year-indicator {
-                top: 64px;
-                font-size: 14px;
-                padding: 4px 20px;
+            .content-event-item {
+                padding: 8px 10px;
+                margin-bottom: 3px;
             }
 
+            .content-event-title {
+                font-size: 13px;
+            }
+
+            .content-event-desc {
+                font-size: 11px;
+                -webkit-line-clamp: 2;
+            }
+
+            .content-event-meta {
+                font-size: 10px;
+            }
+
+            .activity-section-title {
+                font-size: 12px;
+                margin-bottom: 6px;
+            }
+
+            .activity-section-subtitle {
+                font-size: 10px;
+            }
+
+            /* 主容器 - 时间轴区域增大 */
             .main-container {
-                top: calc(104px + 40vh);
-                bottom: 26px;
+                top: calc(126px + 32vh);
+                bottom: 24px;
+            }
+
+            /* 时间轴 - 紧凑间距 */
+            .timeline {
+                padding: 0 40px;
+                min-height: 160px;
+            }
+
+            .timeline-road {
+                left: 20px;
+                right: 20px;
+                height: 100px;
             }
 
             .timeline-node {
-                margin: 0 100px;
+                margin: 0 40px;
+                min-height: 160px;
             }
 
+            .node-dot {
+                width: 26px;
+                height: 26px;
+                margin-top: -13px;
+            }
+
+            .node-dot .core {
+                width: 11px;
+                height: 11px;
+                border-width: 2px;
+            }
+
+            /* 节点内容卡片 - 适配小屏 */
             .node-content {
-                width: 220px;
-                padding: 16px;
+                width: 180px;
+                padding: 12px;
+                border-radius: 10px;
             }
 
+            .node-content.top,
+            .node-content.bottom {
+                bottom: 120px;
+            }
+
+            .node-content .node-title {
+                font-size: 12px;
+            }
+
+            .node-content .node-desc {
+                font-size: 10px;
+            }
+
+            /* 年份标签 - 缩小 */
+            .year-tags {
+                top: calc(58% + 28px);
+                max-width: 90px;
+                gap: 2px;
+            }
+
+            .year-tag {
+                padding: 1px 5px;
+                font-size: 8px;
+            }
+
+            /* 路边风景 - 缩小 */
+            .road-scenery span {
+                font-size: 8px !important;
+            }
+
+            /* 热点按钮 - 缩小 */
+            .hotspot-btn {
+                width: 36px;
+                height: 36px;
+            }
+
+            /* 年份指示器 */
+            .year-indicator {
+                top: 80px;
+                font-size: 13px;
+                padding: 4px 16px;
+            }
+
+            /* 底部滑块 */
             .slider-container {
                 bottom: 0;
-                padding: 4px 12px 2px;
+                padding: 6px 10px 4px;
             }
 
+            .slider {
+                height: 6px;
+            }
+
+            .slider::-webkit-slider-thumb {
+                width: 18px;
+                height: 18px;
+            }
+
+            .slider-labels {
+                font-size: 9px;
+            }
+
+            /* 发布按钮 - 缩小并调整位置 */
             .publish-btn {
-                bottom: 42px;
-                right: 16px;
-                width: 48px;
-                height: 48px;
+                bottom: 36px;
+                right: 14px;
+                width: 44px;
+                height: 44px;
                 font-size: 20px;
             }
 
+            /* 月份详情面板 */
             .month-detail-panel {
                 width: 95%;
-                top: 80px;
-                max-height: calc(100vh - 160px);
+                top: 70px;
+                max-height: calc(100vh - 140px);
             }
 
             .form-row {
                 grid-template-columns: 1fr;
             }
 
+            /* 模态框 */
             .welcome-modal,
             .publish-modal {
                 width: 95%;
+                margin: 0 auto;
+            }
+
+            /* 用户面板 */
+            .user-panel {
+                width: calc(100% - 32px);
+                right: 16px;
+                left: 16px;
+            }
+
+            /* 热点面板 */
+            .hotspot-panel {
+                width: 92%;
+                top: 80px;
+                left: 4%;
+                right: 4%;
+            }
+
+            /* 帖子面板 */
+            .posts-panel {
+                width: 95%;
+                max-height: 70vh;
+            }
+
+            /* 详情按钮 */
+            .content-detail-btn {
+                padding: 5px 12px;
+                font-size: 11px;
+            }
+
+            /* 活动指示器 */
+            .activity-indicator {
+                bottom: 6px;
+            }
+
+            .activity-indicator-dot {
+                width: 5px;
+                height: 5px;
+            }
+
+            /* 键盘提示隐藏 */
+            .keyboard-hint {
+                display: none !important;
+            }
+        }
+
+        /* ============ 超小屏（≤380px）额外适配 ============ */
+        @media (max-width: 380px) {
+            .top-nav {
+                padding: 0 6px;
+                gap: 4px;
+            }
+
+            .nav-title {
+                font-size: 13px;
+            }
+
+            .nav-btn {
+                padding: 0 6px;
+                font-size: 11px;
+                height: 26px;
+                line-height: 26px;
+            }
+
+            .month-bar-btn {
+                padding: 0 4px;
+                font-size: 10px;
+                min-width: 24px;
+            }
+
+            .timeline {
+                padding: 0 24px;
+            }
+
+            .timeline-node {
+                margin: 0 24px;
+                min-height: 140px;
+            }
+
+            .node-content {
+                width: 150px;
+                padding: 10px;
+            }
+
+            .content-card-inner {
+                padding: 10px 8px;
+            }
+
+            .content-event-item {
+                padding: 6px 8px;
             }
         }
 
@@ -2752,14 +2999,8 @@
             font-family: inherit;
         }
 
-        @media (max-width: 768px) {
-            .user-panel {
-                width: calc(100% - 40px);
-                right: 20px;
-                left: 20px;
-            }
-        }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <div class="bg-layer" id="bgLayer"></div>
@@ -3081,6 +3322,20 @@
     <div class="toast" id="toast"></div>
 
     <script>
+        // ============ Supabase配置（安全初始化）============
+        const SUPABASE_URL = 'https://ceogipqzmqeubgwrpfqe.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNlb2dpcHF6bXFldWJnd3JwZnFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU5MjY4MjksImV4cCI6MjA2MTUwMjgyOX0.LzHFxJpIpmCqYI-4fJl0mUKIPsQH3tBmN8LYT7qC-Xk';
+        let _supabaseClient = null;
+        try {
+            if (window.supabase && window.supabase.createClient) {
+                _supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            } else {
+                console.warn('Supabase JS库未加载，将使用离线模式');
+            }
+        } catch(e) {
+            console.error('Supabase初始化失败，将使用离线模式', e);
+        }
+
         // ============ 配置 ============
         const CONFIG = {
             startYear: 2000,
@@ -3173,6 +3428,81 @@
             save(data) {
                 this.data = data;
                 localStorage.setItem(this.storageKey, JSON.stringify(data));
+                this.syncToCloud();
+            }
+
+            async loadFromCloud() {
+                if (!_supabaseClient) {
+                    console.warn('Supabase not initialized, skip cloud load');
+                    return;
+                }
+                try {
+                    const [eventsRes, commentsRes, likesRes] = await Promise.race([
+                        Promise.all([
+                            _supabaseClient.from('events').select('*'),
+                            _supabaseClient.from('comments').select('*'),
+                            _supabaseClient.from('likes').select('*')
+                        ]),
+                        new Promise(resolve => setTimeout(() => resolve([null, null, null]), 8000))
+                    ]);
+
+                    if (eventsRes && eventsRes.data && eventsRes.data.length > 0) {
+                        this.data.events = eventsRes.data.map(e => ({
+                            id: e.id,
+                            year: e.year,
+                            month: e.month || 1,
+                            title: e.title,
+                            description: e.description || '',
+                            location: e.location || '',
+                            author: e.author || '匿名',
+                            media: e.media || [],
+                            tags: e.tags || []
+                        }));
+                    }
+                    if (commentsRes && commentsRes.data) {
+                        this.data.comments = commentsRes.data.map(c => ({
+                            eventTitle: c.event_title || c.eventTitle || '',
+                            content: c.content || '',
+                            time: c.time || new Date().toISOString(),
+                            author: c.author || '匿名',
+                            authorAvatar: c.author_avatar || c.authorAvatar || '',
+                            likes: c.likes || 0,
+                            replyTo: c.reply_to || c.replyTo || null
+                        }));
+                    }
+                    if (likesRes && likesRes.data) {
+                        this.data.likes = likesRes.data.map(l => ({
+                            eventTitle: l.event_title || l.eventTitle || '',
+                            time: l.time || new Date().toISOString()
+                        }));
+                    }
+                    localStorage.setItem(this.storageKey, JSON.stringify(this.data));
+                } catch (e) {
+                    console.error('Supabase load failed', e);
+                }
+            }
+
+            async syncToCloud() {
+                if (!_supabaseClient) return;
+                try {
+                    if (this.data.events) {
+                        for (const evt of this.data.events) {
+                            await _supabaseClient.from('events').upsert({
+                                id: evt.id,
+                                year: evt.year,
+                                month: evt.month || 1,
+                                title: evt.title,
+                                description: evt.description || '',
+                                location: evt.location || '',
+                                author: evt.author || '匿名',
+                                media: evt.media || [],
+                                tags: evt.tags || []
+                            }, { onConflict: 'id' });
+                        }
+                    }
+                } catch (e) {
+                    console.error('Supabase sync failed', e);
+                }
             }
 
             addEvent(event) {
@@ -3484,6 +3814,18 @@ function switchBackground(year) {
             });
             dataManager.data.comments = comments;
             dataManager.save(dataManager.data);
+            if (_supabaseClient) {
+                var _lr = comments[comments.length - 1];
+                _supabaseClient.from('comments').insert({
+                    event_title: _lr.eventTitle,
+                    content: _lr.content,
+                    time: _lr.time,
+                    author: _lr.author,
+                    author_avatar: _lr.authorAvatar,
+                    reply_to: _lr.replyTo,
+                    likes: 0
+                }).then(function(r) { if (r.error) console.error('Reply Supabase error', r.error); });
+            }
             showToast('\u56DE\u590D\u6210\u529F', 'success');
             if (monthBarActiveMonth) {
                 openMonthPosts(monthBarCurrentYear, monthBarActiveMonth);
@@ -3543,6 +3885,17 @@ function switchBackground(year) {
             });
             dataManager.data.comments = comments;
             dataManager.save(dataManager.data);
+            if (_supabaseClient) {
+                var _lc = comments[comments.length - 1];
+                _supabaseClient.from('comments').insert({
+                    event_title: _lc.eventTitle,
+                    content: _lc.content,
+                    time: _lc.time,
+                    author: _lc.author,
+                    author_avatar: _lc.authorAvatar,
+                    likes: 0
+                }).then(function(r) { if (r.error) console.error('Comment Supabase error', r.error); });
+            }
             showToast('\u8BC4\u8BBA\u6210\u529F', 'success');
             if (monthBarActiveMonth) {
                 openMonthPosts(monthBarCurrentYear, monthBarActiveMonth);
@@ -3570,6 +3923,10 @@ function switchBackground(year) {
             dataManager.data.commentLikes = commentLikes;
             dataManager.data.comments = comments;
             dataManager.save(dataManager.data);
+            if (_supabaseClient) {
+                var _tc = comments[cIdx];
+                _supabaseClient.from('comments').update({ likes: _tc.likes }).eq('time', _tc.time).eq('event_title', _tc.eventTitle).then(function(r) { if (r.error) console.error('CommentLike sync error', r.error); });
+            }
             // 刷新当前视图
             if (monthBarActiveMonth) {
                 openMonthPosts(monthBarCurrentYear, monthBarActiveMonth);
@@ -3599,6 +3956,12 @@ function switchBackground(year) {
             }
             dataManager.data.likes = likes;
             dataManager.save(dataManager.data);
+            if (_supabaseClient) {
+                var _le = likes.find(function(l) { return l.eventTitle === eventTitle; });
+                if (_le) {
+                    _supabaseClient.from('likes').insert({ event_title: eventTitle, time: _le.time }).then(function(r) { if (r.error) console.error('Like insert error', r.error); });
+                }
+            }
             // refresh current view
             if (monthBarActiveMonth) {
                 openMonthPosts(monthBarCurrentYear, monthBarActiveMonth);
@@ -5204,7 +5567,7 @@ function switchBackground(year) {
         }
 
         // ============ 初始化 ============
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             initWelcomeModal();
             renderTimeline();
             initTimelineScroll();
@@ -5214,6 +5577,18 @@ function switchBackground(year) {
             updateUserPanel();
             initMonthBar();
             switchBackground(CONFIG.startYear);
+
+            // 异步加载Supabase云端数据（不阻塞页面渲染）
+            try {
+                await Promise.race([
+                    dataManager.loadFromCloud(),
+                    new Promise(resolve => setTimeout(resolve, 10000))
+                ]);
+                renderTimeline();
+                updateUserPanel();
+            } catch(e) {
+                console.error('Supabase load exception', e);
+            }
 
             // 初始同步
             setTimeout(() => {
